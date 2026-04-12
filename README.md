@@ -1,113 +1,86 @@
-# Dota 2 Assets Downloader / Загрузчик ассетов Dota 2
+# Dota 2 Assets Downloader
 
-PowerShell script that automatically downloads official Dota 2 assets (heroes, abilities, items, neutral creeps) from Steam CDN and OpenDota API.
-
-PowerShell-скрипт для автоматической загрузки официальных ассетов Dota 2 (герои, способности, предметы, нейтральные крипы) из Steam CDN и OpenDota API.
+PowerShell script that downloads official Dota 2 assets (heroes, abilities, items, neutral creeps) from Steam CDN and OpenDota API.
 
 ---
 
-## 📁 Downloaded Content / Загружаемый контент
+## 📦 Downloaded Assets
 
-| Category / Категория       | Directory / Папка               | Count / Кол-во   |
-|----------------------------|----------------------------------|------------------|
-| 🦸 Heroes / Герои          | `dota_official_assets/heroes/`   | ~124             |
-| ⚡ Abilities / Способности  | `dota_official_assets/abilities_items/` | ~1300+    |
-| 🎒 Items / Предметы        | `dota_official_assets/abilities_items/` | ~200+      |
-| 🐉 Neutral Creeps / Нейтралы | `dota_official_assets/neutrals/` | ~40+            |
+| Category       | Directory                      | Count  |
+|----------------|--------------------------------|--------|
+| Heroes         | `dota_official_assets/heroes/` | ~124   |
+| Hero Icons     | `dota_official_assets/heroes/icons/` | ~124   |
+| Abilities      | `dota_official_assets/abilities_items/` | ~1300+ |
+| Items          | `dota_official_assets/abilities_items/` | ~200+  |
+| Neutral Creeps | `dota_official_assets/neutrals/` | ~40+   |
 
-> **Note / Примечание:** Exact numbers may vary as Dota 2 receives updates. / Точное количество может меняться с обновлениями Dota 2.
+> Asset counts may change with Dota 2 updates.
 
 ---
 
-## 🚀 Getting Started / Начало работы
+## 🚀 Quick Start
 
-### Prerequisites / Требования
+### Requirements
 
 - **Windows** 10/11
 - **PowerShell** 5.1+ or PowerShell 7+
-- **Git** (for cloning the repository)
 
-### Installation / Установка
-
-```powershell
-# Clone the repository / Клонировать репозиторий
-git clone https://github.com/YOUR_USERNAME/dota2-assets-downloader.git
-cd dota2-assets-downloader
-```
-
-### Usage / Использование
+### Download Assets
 
 ```powershell
-# Run the script / Запустить скрипт
+# Run the script
 .\download_dota_assets.ps1
 ```
 
-If you encounter execution policy errors, run with bypass:
-
-Если возникает ошибка политик выполнения, запустите так:
+If you get execution policy errors:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File ".\download_dota_assets.ps1"
 ```
 
-Or permanently allow scripts for your user:
-
-Или разрешите выполнение скриптов навсегда для пользователя:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
-```
-
 ---
 
-## 📂 Project Structure / Структура проекта
+## 📂 Project Structure
 
 ```
 dota2-assets-downloader/
-├── download_dota_assets.ps1   # Main script / Главный скрипт
-├── README.md                   # This file / Этот файл
+├── download_dota_assets.ps1   # Main download script
+├── README.md                   # Documentation
 ├── .gitignore                  # Git ignore rules
-└── dota_official_assets/       # Downloaded assets / Загруженные ассеты
-    ├── heroes/                 # Hero portrait PNGs / Портреты героев
-    ├── abilities_items/        # Ability & item icons / Иконки способностей и предметов
+└── dota_official_assets/       # Generated on first run
+    ├── heroes/                 # Hero portrait PNGs
+    │   └── icons/              # Hero icon PNGs (smaller)
+    ├── abilities_items/        # Ability & item icons
     │   ├── ability_*.png
     │   └── item_*.png
-    └── neutrals/               # Neutral creep PNGs / Изображения нейтралов
+    └── neutrals/               # Neutral creep PNGs
 ```
 
+> **Note:** `dota_official_assets/` is git-ignored. Run the script to generate.
+
 ---
 
-## 🔌 Data Sources / Источники данных
+## 🔌 Data Sources
 
-| Source / Источник | Used for / Используется для |
-|-------------------|------------------------------|
+| Source | Used For |
+|--------|----------|
 | [OpenDota API](https://docs.opendota.com/) | Heroes, abilities, items metadata |
-| [Steam CDN](https://cdn.steamstatic.com) | Actual PNG images / Сами изображения |
-| [SteamTracking GameTracking-Dota2](https://github.com/SteamTracking/GameTracking-Dota2) | Neutral unit names (pak01_dir.txt) |
+| [Steam CDN](https://cdn.steamstatic.com) | PNG images |
+| [SteamTracking](https://github.com/SteamTracking/GameTracking-Dota2) | Neutral unit names (`pak01_dir.txt`) |
 
 ---
 
-## ⚙️ How It Works / Как это работает
+## ⚙️ How It Works
 
-1. **Heroes / Герои** — Fetches hero list from OpenDota API, downloads portrait images from Steam CDN
-2. **Abilities / Способности** — Fetches ability data, filters and downloads icons with `ability_` prefix
-3. **Items / Предметы** — Fetches item data, downloads icons with `item_` prefix
-4. **Neutrals / Нейтралы** — Downloads `pak01_dir.txt`, extracts neutral unit names via regex, downloads their images
+1. **Heroes** — Fetches hero list from OpenDota, downloads portraits + icons from Steam CDN
+2. **Abilities** — Fetches ability data, downloads icons with `ability_` prefix
+3. **Items** — Fetches item data, downloads icons with `item_` prefix
+4. **Neutrals** — Downloads `pak01_dir.txt` from SteamTracking, extracts neutral unit names, downloads images
 
-The script skips already downloaded files (checks if file exists before downloading).
-
-Скрипт пропускает уже загруженные файлы (проверяет наличие перед скачиванием).
+The script **skips already downloaded files** — safe to re-run for incremental updates.
 
 ---
 
-## 📝 License / Лицензия
+## 📝 License
 
-This script is provided as-is. Dota 2 assets are property of Valve Corporation.  
-Скрипт предоставляется «как есть». Ассеты Dota 2 являются собственностью Valve Corporation.
-
----
-
-## 🤝 Contributing / Участие
-
-Feel free to open issues or submit PRs!  
-Не стесняйтесь открывать issue или отправлять pull-реквесты!
+Script provided as-is. Dota 2 assets are property of **Valve Corporation**.
