@@ -28,17 +28,34 @@ function Download-File {
 
 Write-Host 'Fetching heroes...'
 $heroes = Get-JsonObj 'https://api.opendota.com/api/constants/heroes'
+
+# Создаём папку для иконок героев
+$HeroIconDir = Join-Path $HeroDir 'icons'
+New-Item -ItemType Directory -Force -Path $HeroIconDir | Out-Null
+
 $heroOk = 0
+$heroIconOk = 0
 foreach ($p in $heroes.PSObject.Properties) {
     $h = $p.Value
-    if (-not $h.img) { continue }
-    $rel = ($h.img -replace '\?.*$', '')
-    $name = Split-Path $rel -Leaf
-    $url = $Cdn + $rel
-    if (Download-File $url (Join-Path $HeroDir $name)) { $heroOk++ }
+
+    # — Полноразмерное изображение —
+    if ($h.img) {
+        $rel = ($h.img -replace '\?.*$', '')
+        $name = Split-Path $rel -Leaf
+        $url = $Cdn + $rel
+        if (Download-File $url (Join-Path $HeroDir $name)) { $heroOk++ }
+    }
+
+    # — Иконка героя —
+    if ($h.icon) {
+        $relIcon = ($h.icon -replace '\?.*$', '')
+        $iconName = Split-Path $relIcon -Leaf
+        $urlIcon = $Cdn + $relIcon
+        if (Download-File $urlIcon (Join-Path $HeroIconDir $iconName)) { $heroIconOk++ }
+    }
 }
 
-Write-Host "Heroes saved: $heroOk"
+Write-Host "Heroes saved: $heroOk | Hero icons saved: $heroIconOk"
 
 Write-Host 'Fetching abilities + items (abilities_dump from API)...'
 $abilities = Get-JsonObj 'https://api.opendota.com/api/constants/abilities'
