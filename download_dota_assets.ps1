@@ -22,7 +22,13 @@ param(
     [switch]$SkipNeutrals,
     [switch]$SkipFacets,
     [switch]$SkipData,
+
+    # -SkipLegacy is an umbrella that disables hero/abi/item legacy variants
+    # in one go. The three granular switches below override per-section.
     [switch]$SkipLegacy,
+    [switch]$SkipHeroLegacy,
+    [switch]$SkipAbilitiesLegacy,
+    [switch]$SkipItemsLegacy,
 
     # Off by default — these blow up disk usage by ~1 GB / ~150 MB respectively
     [switch]$IncludeVideos,
@@ -31,6 +37,12 @@ param(
     # Off by default — only useful for dataminers, ~10 KB extra per ability
     [switch]$IncludeAbilityHires
 )
+
+if ($SkipLegacy) {
+    $SkipHeroLegacy       = $true
+    $SkipAbilitiesLegacy  = $true
+    $SkipItemsLegacy      = $true
+}
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference    = 'SilentlyContinue'  # avoid Invoke-WebRequest progress bar slowness
@@ -57,10 +69,10 @@ $DataDir         = Join-Path $OutputRoot 'data'
 $dirs = @($OutputRoot, $HeroDir, $HeroIconDir, $AbiItemDir, $NeutDir, $DataDir)
 if (-not $SkipHeroes) {
     $dirs += $HeroCropDir, $HeroSocialDir
-    if ($IncludeVideos) { $dirs += $HeroRenderDir }
-    if (-not $SkipLegacy) { $dirs += $HeroLegacyDir, $MiniHeroDir }
+    if ($IncludeVideos)         { $dirs += $HeroRenderDir }
+    if (-not $SkipHeroLegacy)   { $dirs += $HeroLegacyDir, $MiniHeroDir }
 }
-if (-not $SkipLegacy)  { $dirs += $AbiItemLegacy }
+if (-not ($SkipAbilitiesLegacy -and $SkipItemsLegacy)) { $dirs += $AbiItemLegacy }
 if (-not $SkipFacets)  { $dirs += $FacetDir }
 if ($IncludeTeams)     { $dirs += $TeamDir }
 foreach ($d in $dirs) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
@@ -151,7 +163,7 @@ if (-not $SkipHeroes) {
         Download-Many -Label 'hero-renders' -Pairs $vids
     }
 
-    if (-not $SkipLegacy) {
+    if (-not $SkipHeroLegacy) {
         Write-Host 'Heroes: legacy CDN variants (full/lg/sb/vert/hphover/icon + miniheroes)...'
         $legacy = New-Object System.Collections.Generic.List[Object]
         foreach ($name in $heroNames) {
@@ -174,7 +186,7 @@ if (-not $SkipHeroes) {
 $abilityNames = @()
 $itemNames    = @()
 
-if (-not $SkipAbilities -or -not $SkipLegacy) {
+if (-not $SkipAbilities -or -not $SkipAbilitiesLegacy) {
     Write-Host 'Fetching abilities from OpenDota...'
     $abilities = Get-JsonObj 'https://api.opendota.com/api/constants/abilities'
     $modern = New-Object System.Collections.Generic.List[Object]
@@ -192,7 +204,7 @@ if (-not $SkipAbilities -or -not $SkipLegacy) {
     if (-not $SkipAbilities) { Download-Many -Label 'abilities' -Pairs $modern }
 }
 
-if (-not $SkipItems -or -not $SkipLegacy) {
+if (-not $SkipItems -or -not $SkipItemsLegacy) {
     Write-Host 'Fetching items from OpenDota...'
     $items = Get-JsonObj 'https://api.opendota.com/api/constants/items'
     $modern = New-Object System.Collections.Generic.List[Object]
@@ -210,33 +222,37 @@ if (-not $SkipItems -or -not $SkipLegacy) {
     if (-not $SkipItems) { Download-Many -Label 'items' -Pairs $modern }
 }
 
-if (-not $SkipLegacy) {
+if (-not ($SkipAbilitiesLegacy -and $SkipItemsLegacy)) {
     Write-Host 'Abilities + items: legacy CDN variants...'
     $legacy = New-Object System.Collections.Generic.List[Object]
 
-    foreach ($a in $abilityNames) {
-        foreach ($suffix in '_lg.png','_md.png') {
-            $legacy.Add([pscustomobject]@{
-                Url  = "$Cdn/apps/dota2/images/abilities/$a$suffix"
-                Dest = (Join-Path $AbiItemLegacy ('ability_' + $a + $suffix))
-            })
-        }
-        if ($IncludeAbilityHires) {
-            foreach ($suffix in '_hp1.png','_hp2.png') {
+    if (-not $SkipAbilitiesLegacy) {
+        foreach ($a in $abilityNames) {
+            foreach ($suffix in '_lg.png','_md.png') {
                 $legacy.Add([pscustomobject]@{
                     Url  = "$Cdn/apps/dota2/images/abilities/$a$suffix"
                     Dest = (Join-Path $AbiItemLegacy ('ability_' + $a + $suffix))
                 })
             }
+            if ($IncludeAbilityHires) {
+                foreach ($suffix in '_hp1.png','_hp2.png') {
+                    $legacy.Add([pscustomobject]@{
+                        Url  = "$Cdn/apps/dota2/images/abilities/$a$suffix"
+                        Dest = (Join-Path $AbiItemLegacy ('ability_' + $a + $suffix))
+                    })
+                }
+            }
         }
     }
 
-    foreach ($it in $itemNames) {
-        foreach ($suffix in '_lg.png','_eg.png') {
-            $legacy.Add([pscustomobject]@{
-                Url  = "$Cdn/apps/dota2/images/items/$it$suffix"
-                Dest = (Join-Path $AbiItemLegacy ('item_' + $it + $suffix))
-            })
+    if (-not $SkipItemsLegacy) {
+        foreach ($it in $itemNames) {
+            foreach ($suffix in '_lg.png','_eg.png') {
+                $legacy.Add([pscustomobject]@{
+                    Url  = "$Cdn/apps/dota2/images/items/$it$suffix"
+                    Dest = (Join-Path $AbiItemLegacy ('item_' + $it + $suffix))
+                })
+            }
         }
     }
     Download-Many -Label 'abilities-items-legacy' -Pairs $legacy

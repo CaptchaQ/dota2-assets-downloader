@@ -39,30 +39,47 @@ By default the script saves everything in the table below, except hero render vi
 - **Windows / Linux / macOS** (anywhere PowerShell runs)
 - **PowerShell 5.1+** or **PowerShell 7+**
 
-### Run
+### Run — interactive TUI (recommended)
+
+```powershell
+.\Start-DotaAssetsDownloader.ps1
+```
+
+The launcher walks you through:
+
+1. CaptchaQ ASCII logo + language picker (English / Русский).
+2. Multi-select checkbox menu of every asset category (name, count, approx. size).
+3. Confirmation, then runs `download_dota_assets.ps1` with the matching switches.
+
+**Controls:** `↑`/`↓` — move, `Space` — toggle current row, `A` — toggle all, `D` — reset to defaults, `Enter` — start, `Q` / `Esc` — quit.
+
+If you get an execution-policy error on Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ".\Start-DotaAssetsDownloader.ps1"
+```
+
+### Run — non-interactive (CLI)
 
 ```powershell
 # Default: download everything except hero render videos and team logos.
 .\download_dota_assets.ps1
 ```
 
-If you get an execution-policy error on Windows:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File ".\download_dota_assets.ps1"
-```
-
 ### Options
 
 ```powershell
 .\download_dota_assets.ps1 `
-  -OutputRoot 'D:\dota_assets' `   # custom destination
-  -Language    'russian' `          # for Valve datafeed JSON (english/russian/schinese/...)
-  -IncludeVideos `                  # download hero render webm (~1 GB)
-  -IncludeTeams `                   # download all pro-team logos (~150 MB)
-  -IncludeAbilityHires `            # download legacy *_hp1/_hp2 ability icons
-  -SkipLegacy `                     # skip legacy CDN size variants
-  -SkipData `                       # skip JSON metadata
+  -OutputRoot 'D:\dota_assets' `        # custom destination
+  -Language    'russian' `              # for Valve datafeed JSON (english/russian/schinese/...)
+  -IncludeVideos `                      # download hero render webm (~1 GB)
+  -IncludeTeams `                       # download all pro-team logos (~150 MB)
+  -IncludeAbilityHires `                # download legacy *_hp1/_hp2 ability icons
+  -SkipLegacy `                         # umbrella: skip every legacy CDN variant
+  -SkipHeroLegacy `                     # skip only hero legacy variants
+  -SkipAbilitiesLegacy `                # skip only ability legacy variants
+  -SkipItemsLegacy `                    # skip only item legacy variants
+  -SkipData `                           # skip JSON metadata
   -SkipHeroes -SkipAbilities -SkipItems -SkipNeutrals -SkipFacets
 ```
 
