@@ -1,4 +1,4 @@
-# Interactive launcher for download_dota_assets.ps1
+﻿# Interactive launcher for download_dota_assets.ps1
 #
 # Flow:
 #   1. CaptchaQ ASCII logo

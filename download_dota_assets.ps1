@@ -1,4 +1,4 @@
-# Dota 2 Assets Downloader
+﻿# Dota 2 Assets Downloader
 # Downloads official Dota 2 assets from Steam CDN, OpenDota API and Valve datafeed
 # into dota_official_assets/.
 #
