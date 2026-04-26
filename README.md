@@ -18,13 +18,17 @@ By default the script saves everything in the table below, except hero render vi
 | Hero render videos *(opt-in)* | `dota_official_assets/heroes/renders/` | CDN `dota_react/videos/heroes/renders/` | 127 | ~1 GB |
 | Hero legacy variants | `dota_official_assets/heroes/legacy/{name}_full/_lg/_sb/_vert.jpg/_hphover/_icon.png` | CDN `images/heroes/` | 127 × 6 | ~30 MB |
 | Mini-hero icons | `dota_official_assets/heroes/legacy/miniheroes/` | CDN `images/miniheroes/` | 127 | ~1 MB |
+| Hero wide banners | `dota_official_assets/heroes/wide/{name}.png` | CDN `dota_react/heroes/wide/` | 127 | ~2 MB |
+| Hero stat icons | `dota_official_assets/heroes/stats/icon_*.png` | CDN `dota_react/heroes/stats/` | 9 | <1 MB |
 | Ability icons (modern) | `dota_official_assets/abilities_items/ability_*.png` | OpenDota → CDN `dota_react/abilities/` | ~1300+ | ~15 MB |
 | Item icons (modern) | `dota_official_assets/abilities_items/item_*.png` | OpenDota → CDN `dota_react/items/` | ~250+ | ~3 MB |
 | Ability legacy variants | `dota_official_assets/abilities_items_legacy/ability_*_lg/_md.png` | CDN `images/abilities/` | ~1300 × 2 | ~25 MB |
 | Item legacy variants | `dota_official_assets/abilities_items_legacy/item_*_lg/_eg.png` | CDN `images/items/` | ~250 × 2 | ~5 MB |
 | Neutral creep icons | `dota_official_assets/neutrals/` | SteamTracking `pak01_dir.txt` → CDN | ~40+ | <1 MB |
+| Lane creeps + sub-units | `dota_official_assets/units/npc_dota_*.png` | CDN `dota_react/units/` (CDN-confirmed subset) | 12 | <1 MB |
 | Facet icons | `dota_official_assets/facets/` | OpenDota `hero_abilities` → CDN `dota_react/icons/facets/` | ~80 | <1 MB |
 | Pro-team logos *(opt-in)* | `dota_official_assets/teams/` | OpenDota `/api/teams` → CDN `dota_react/teams/` | thousands | ~150 MB |
+| Pro-team logos hi-res *(opt-in)* | `dota_official_assets/teams_hires/` | OpenDota `/api/teams` → CDN `apps/dota2/teamlogos/` | thousands | ~200 MB |
 | OpenDota constants JSON | `dota_official_assets/data/opendota_*.json` | `https://api.opendota.com/api/constants/...` | 12 files | ~5 MB |
 | Valve datafeed JSON | `dota_official_assets/data/valve_*.json` | `https://www.dota2.com/datafeed/...` | 4 files | ~1 MB |
 
@@ -183,7 +187,8 @@ The script **skips files that already exist on disk**, so re-running it is an in
 
 These are not exposed on the public CDN and would require a different toolchain:
 
-- **VPK-only assets** — rank-tier medals (Herald → Immortal), arcana / persona spell icons, HUD skins, emoticons, sprays, chat-wheel, loading screens, hero voice lines, Dota Plus relics, etc. These live inside `pak01_*.vpk` in the Dota 2 install and need a tool like [ValveResourceFormat / Decompiler.exe](https://github.com/ValveResourceFormat/ValveResourceFormat) (or SteamCMD + `vpk`) to extract.
+- **VPK-only assets** — rank-tier medals (Herald → Immortal), arcana / persona spell icons, HUD skins, UI / global / minimap / map / structures / couriers, courier shop cosmetics, emoticons, sprays, chat-wheel, loading screens, hero voice lines, Dota Plus relics, etc. These live inside `pak01_*.vpk` in the Dota 2 install and need a tool like [ValveResourceFormat / Decompiler.exe](https://github.com/ValveResourceFormat/ValveResourceFormat) (or SteamCMD + `vpk`) to extract.
+  - The following directory paths look like they should exist on `cdn.steamstatic.com/apps/dota2/images/dota_react/...`, but Valve does **not** ship them on the React CDN — they're only inside the VPK: `ui/`, `hud/`, `global/`, `rank_icons/`, `maps/`, `minimap/`, `structures/`, `couriers/`, `spellicons/`, `status_icons/`, `runes/`. Same for the unit names `npc_dota_courier*`, `npc_dota_roshan`, `npc_dota_*creep_badguys_*` (Dire-side creeps), `npc_dota_visage_familiar`, `npc_dota_lone_druid_bear`, `npc_dota_brewmaster_*` splits, `npc_dota_necronomicon_*`, `npc_dota_juggernaut_healing_ward`, etc.
 - **Match / player data** — requires Steam Web API key (`api.steampowered.com`) or Stratz GraphQL token.
 - **Cosmetic schema (`items_game.txt`)** — also fetched via the Steam Web API (`IEconItems_570/GetSchemaURL`).
 

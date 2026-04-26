@@ -35,7 +35,14 @@ param(
     [switch]$IncludeTeams,
 
     # Off by default — only useful for dataminers, ~10 KB extra per ability
-    [switch]$IncludeAbilityHires
+    [switch]$IncludeAbilityHires,
+
+    # New CDN-confirmed categories. All are small and on by default,
+    # except hi-res team logos (heavier alternative path).
+    [switch]$SkipHeroStatIcons,    # 9 PNGs at /heroes/stats/
+    [switch]$SkipHeroWideBanners,  # 127 wide banner PNGs at /heroes/wide/
+    [switch]$SkipExtraUnits,       # 12 sub-unit / lane creep PNGs at /units/
+    [switch]$IncludeTeamsHires     # extra ~70 KB/team variant at /apps/dota2/teamlogos/
 )
 
 if ($SkipLegacy) {
@@ -61,24 +68,32 @@ $HeroSocialDir   = Join-Path $HeroDir   'social'
 $HeroRenderDir   = Join-Path $HeroDir   'renders'
 $HeroLegacyDir   = Join-Path $HeroDir   'legacy'
 $MiniHeroDir     = Join-Path $HeroLegacyDir 'miniheroes'
+$HeroWideDir     = Join-Path $HeroDir   'wide'
+$HeroStatsDir    = Join-Path $HeroDir   'stats'
 
 $AbiItemDir      = Join-Path $OutputRoot 'abilities_items'
 $AbiItemLegacy   = Join-Path $OutputRoot 'abilities_items_legacy'
 
 $NeutDir         = Join-Path $OutputRoot 'neutrals'
+$ExtraUnitsDir   = Join-Path $OutputRoot 'units'
 $FacetDir        = Join-Path $OutputRoot 'facets'
 $TeamDir         = Join-Path $OutputRoot 'teams'
+$TeamHiresDir    = Join-Path $OutputRoot 'teams_hires'
 $DataDir         = Join-Path $OutputRoot 'data'
 
 $dirs = @($OutputRoot, $HeroDir, $HeroIconDir, $AbiItemDir, $NeutDir, $DataDir)
 if (-not $SkipHeroes) {
     $dirs += $HeroCropDir, $HeroSocialDir
-    if ($IncludeVideos)         { $dirs += $HeroRenderDir }
-    if (-not $SkipHeroLegacy)   { $dirs += $HeroLegacyDir, $MiniHeroDir }
+    if ($IncludeVideos)            { $dirs += $HeroRenderDir }
+    if (-not $SkipHeroLegacy)      { $dirs += $HeroLegacyDir, $MiniHeroDir }
+    if (-not $SkipHeroWideBanners) { $dirs += $HeroWideDir }
+    if (-not $SkipHeroStatIcons)   { $dirs += $HeroStatsDir }
 }
 if (-not ($SkipAbilitiesLegacy -and $SkipItemsLegacy)) { $dirs += $AbiItemLegacy }
-if (-not $SkipFacets)  { $dirs += $FacetDir }
-if ($IncludeTeams)     { $dirs += $TeamDir }
+if (-not $SkipFacets)      { $dirs += $FacetDir }
+if (-not $SkipExtraUnits)  { $dirs += $ExtraUnitsDir }
+if ($IncludeTeams)         { $dirs += $TeamDir }
+if ($IncludeTeamsHires)    { $dirs += $TeamHiresDir }
 foreach ($d in $dirs) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
 
 # Helpers --------------------------------------------------------------------
@@ -142,7 +157,11 @@ function Download-Many {
 # 1. Heroes ------------------------------------------------------------------
 $heroNames = @()  # short names like 'abaddon', 'antimage' — used everywhere later
 
-if (-not $SkipHeroes -or -not $SkipFacets) {
+$needHeroNames = (-not $SkipHeroes) `
+    -or (-not $SkipFacets) `
+    -or (-not $SkipHeroWideBanners) `
+    -or (-not $SkipHeroStatIcons)
+if ($needHeroNames) {
     Write-Host 'Fetching hero list from OpenDota...'
     $heroes = Get-JsonObj 'https://api.opendota.com/api/constants/heroes'
     foreach ($p in $heroes.PSObject.Properties) {
@@ -199,6 +218,42 @@ if (-not $SkipHeroes) {
         }
         Download-Many -Label 'heroes-legacy' -Pairs $legacy
     }
+}
+
+# 1b. Hero wide banners + stat icons -----------------------------------------
+# Independent of $SkipHeroes so they can be picked individually from the launcher.
+if ((-not $SkipHeroWideBanners) -and $heroNames.Count -gt 0) {
+    if (-not (Test-Path $HeroWideDir)) { New-Item -ItemType Directory -Force -Path $HeroWideDir | Out-Null }
+    Write-Host 'Heroes: wide background banners (heroes/wide/*.png)...'
+    $wide = New-Object System.Collections.Generic.List[Object]
+    foreach ($name in $heroNames) {
+        $wide.Add([pscustomobject]@{
+            Url  = "$Cdn/apps/dota2/images/dota_react/heroes/wide/$name.png"
+            Dest = (Join-Path $HeroWideDir "$name.png")
+        })
+    }
+    Download-Many -Label 'heroes-wide' -Pairs $wide
+}
+
+if (-not $SkipHeroStatIcons) {
+    if (-not (Test-Path $HeroStatsDir)) { New-Item -ItemType Directory -Force -Path $HeroStatsDir | Out-Null }
+    Write-Host 'Heroes: stat icons (armor, damage, attack range, vision, ...)...'
+    # The 9 stat icons exposed under /heroes/stats/. Other names (health,
+    # mana, strength, agility, intelligence, *_regen) return 404 — Valve
+    # only ships these on the React CDN.
+    $stats = @(
+        'icon_armor','icon_attack_range','icon_attack_time','icon_damage',
+        'icon_magic_resist','icon_movement_speed','icon_projectile_speed',
+        'icon_turn_rate','icon_vision'
+    )
+    $sList = New-Object System.Collections.Generic.List[Object]
+    foreach ($s in $stats) {
+        $sList.Add([pscustomobject]@{
+            Url  = "$Cdn/apps/dota2/images/dota_react/heroes/stats/$s.png"
+            Dest = (Join-Path $HeroStatsDir "$s.png")
+        })
+    }
+    Download-Many -Label 'hero-stats' -Pairs $sList
 }
 
 # 2. Abilities + 3. Items ----------------------------------------------------
@@ -310,6 +365,37 @@ if (-not $SkipNeutrals) {
     }
 }
 
+# 4b. Extra units / lane creeps / sub-units ---------------------------------
+# These are the non-neutral npc_dota_* assets from pak01 that Valve actually
+# exposes on /dota_react/units/. Dire-side creeps, courier, roshan, and most
+# hero-summons (visage familiar, lone druid bear, brewmaster split, etc.) are
+# NOT exposed by the CDN — they only live inside pak01_*.vpk.
+if (-not $SkipExtraUnits) {
+    Write-Host 'Extra units: lane creeps, siege, sub-units (CDN-confirmed subset)...'
+    $extraUnits = @(
+        'npc_dota_creep_goodguys_melee',
+        'npc_dota_creep_goodguys_ranged',
+        'npc_dota_creep_goodguys_flagbearer',
+        'npc_dota_goodguys_siege',
+        'npc_dota_eidolon',
+        'npc_dota_furion_treant',
+        'npc_dota_broodmother_spiderling',
+        'npc_dota_beastmaster_boar',
+        'npc_dota_dark_troll_warlord_skeleton_warrior',
+        'npc_dota_warlock_golem',
+        'npc_dota_invoker_forged_spirit',
+        'npc_dota_unit_undying_zombie'
+    )
+    $list = New-Object System.Collections.Generic.List[Object]
+    foreach ($n in $extraUnits) {
+        $list.Add([pscustomobject]@{
+            Url  = "$Cdn/apps/dota2/images/dota_react/units/$n.png"
+            Dest = (Join-Path $ExtraUnitsDir "$n.png")
+        })
+    }
+    Download-Many -Label 'extra-units' -Pairs $list
+}
+
 # 5. Facets ------------------------------------------------------------------
 if (-not $SkipFacets) {
     Write-Host 'Facets: fetching icon list via OpenDota /constants/hero_abilities...'
@@ -360,6 +446,30 @@ if ($IncludeTeams) {
             })
         }
         Download-Many -Label 'teams' -Pairs $list
+    }
+}
+
+# 6b. Pro-team logos (hi-res, alternative path) -----------------------------
+# /apps/dota2/teamlogos/{id}.png returns ~70 KB upstream PNGs vs ~17 KB on
+# /dota_react/teams/. Same id space, different rendition. Off by default.
+if ($IncludeTeamsHires) {
+    Write-Host 'Teams (hi-res): fetching team list from OpenDota /api/teams...'
+    try {
+        if (-not $teams) { $teams = Get-JsonObj 'https://api.opendota.com/api/teams' }
+    } catch {
+        Write-Host '  could not fetch /api/teams — skipping hi-res team logos'
+        $teams = @()
+    }
+    if ($teams.Count -gt 0) {
+        $list = New-Object System.Collections.Generic.List[Object]
+        foreach ($t in $teams) {
+            if (-not $t.team_id) { continue }
+            $list.Add([pscustomobject]@{
+                Url  = "$Cdn/apps/dota2/teamlogos/$($t.team_id).png"
+                Dest = (Join-Path $TeamHiresDir "$($t.team_id).png")
+            })
+        }
+        Download-Many -Label 'teams-hires' -Pairs $list
     }
 }
 

@@ -167,10 +167,37 @@ $Categories = @(
         Default  = $true
     },
     [pscustomobject]@{
+        Key      = 'HeroesWide'
+        NameEn   = 'Heroes — wide background banners (heroes/wide/*.png)'
+        NameRu   = 'Герои — широкие фон-баннеры (heroes/wide/*.png)'
+        Count    = '127'
+        SizeMb   = 2
+        SizeText = '~2 MB'
+        Default  = $true
+    },
+    [pscustomobject]@{
+        Key      = 'HeroStats'
+        NameEn   = 'Hero stat icons (armor, damage, vision, ...)'
+        NameRu   = 'Иконки характеристик (armor, damage, vision, ...)'
+        Count    = '9'
+        SizeMb   = 1
+        SizeText = '<1 MB'
+        Default  = $true
+    },
+    [pscustomobject]@{
         Key      = 'Neutrals'
         NameEn   = 'Neutral creep icons'
         NameRu   = 'Иконки нейтральных крипов'
         Count    = '~40+'
+        SizeMb   = 1
+        SizeText = '<1 MB'
+        Default  = $true
+    },
+    [pscustomobject]@{
+        Key      = 'ExtraUnits'
+        NameEn   = 'Lane creeps + sub-units (CDN-confirmed subset)'
+        NameRu   = 'Крипы + суб-юниты (только то что есть на CDN)'
+        Count    = '12'
         SizeMb   = 1
         SizeText = '<1 MB'
         Default  = $true
@@ -186,11 +213,20 @@ $Categories = @(
     },
     [pscustomobject]@{
         Key      = 'Teams'
-        NameEn   = 'Pro-team logos'
-        NameRu   = 'Логотипы про-команд'
+        NameEn   = 'Pro-team logos (dota_react/teams/*.png)'
+        NameRu   = 'Логотипы про-команд (dota_react/teams/*.png)'
         Count    = 'thousands'
         SizeMb   = 150
         SizeText = '~150 MB'
+        Default  = $false
+    },
+    [pscustomobject]@{
+        Key      = 'TeamsHires'
+        NameEn   = 'Pro-team logos — hi-res (apps/dota2/teamlogos/*.png)'
+        NameRu   = 'Логотипы про-команд — hi-res (apps/dota2/teamlogos/*.png)'
+        Count    = 'thousands'
+        SizeMb   = 200
+        SizeText = '~200 MB'
         Default  = $false
     },
     [pscustomobject]@{
@@ -353,8 +389,13 @@ function Build-Args {
     if (-not $byKey.AbilitiesLegacy) { $argsList += '-SkipAbilitiesLegacy' }
     if (-not $byKey.ItemsLegacy)     { $argsList += '-SkipItemsLegacy' }
 
+    if (-not $byKey.HeroesWide)      { $argsList += '-SkipHeroWideBanners' }
+    if (-not $byKey.HeroStats)       { $argsList += '-SkipHeroStatIcons' }
+    if (-not $byKey.ExtraUnits)      { $argsList += '-SkipExtraUnits' }
+
     if ($byKey.HeroesVideos)         { $argsList += '-IncludeVideos' }
     if ($byKey.Teams)                { $argsList += '-IncludeTeams' }
+    if ($byKey.TeamsHires)           { $argsList += '-IncludeTeamsHires' }
     if ($byKey.AbilitiesHires)       { $argsList += '-IncludeAbilityHires' }
 
     return $argsList
