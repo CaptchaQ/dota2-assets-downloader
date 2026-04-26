@@ -64,6 +64,8 @@ $L = @{
         ColName      = 'Category'
         ColCount     = 'Count'
         ColSize      = 'Size'
+        SelectedHdr  = 'Selected categories'
+        AbortHint    = 'Press Ctrl+C to abort. Window will stay open after completion.'
     }
     ru = @{
         ChooseLang   = 'Выберите язык / Choose language:'
@@ -83,6 +85,8 @@ $L = @{
         ColName      = 'Категория'
         ColCount     = 'Кол-во'
         ColSize      = 'Объём'
+        SelectedHdr  = 'Выбранные категории'
+        AbortHint    = 'Ctrl+C — прервать. После завершения окно останется открытым.'
     }
 }
 
@@ -390,9 +394,30 @@ if ($answer -ne 'y' -and $answer -ne 'Y' -and $answer -ne 'д' -and $answer -ne 
     return
 }
 
+# ── Static "download view" ──
+# Replace the menu with a compact recap so the user sees what's running
+# without the per-section log scrolling the menu off-screen. The actual
+# per-file progress is rendered by Write-Progress inside the downloader,
+# which pins itself in place (top of console on PS 5.1, bottom ANSI line on
+# pwsh 7) and never adds rows to the scrollback.
+Show-Logo
+Write-Host ($T.SelectedHdr + ':') -ForegroundColor Yellow
+Write-Host ''
+$totalMb = 0
+for ($i = 0; $i -lt $Categories.Count; $i++) {
+    if (-not $selected[$i]) { continue }
+    $name = if ($lang -eq 'ru') { $Categories[$i].NameRu } else { $Categories[$i].NameEn }
+    $line = '  [x] {0}  ({1}, {2})' -f $name, $Categories[$i].Count, $Categories[$i].SizeText
+    Write-Host $line -ForegroundColor Green
+    $totalMb += [int]$Categories[$i].SizeMb
+}
+Write-Host ''
+Write-Host ($T.TotalLine -f (@($selected | Where-Object { $_ }).Count), (Format-MB $totalMb)) -ForegroundColor Yellow
+Write-Host $T.AbortHint -ForegroundColor DarkGray
 Write-Host ''
 Write-Host $T.Starting -ForegroundColor Green
 Write-Host ''
+
 & $script:Downloader @argsList
 
 Write-Host ''

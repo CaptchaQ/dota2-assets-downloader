@@ -45,7 +45,11 @@ if ($SkipLegacy) {
 }
 
 $ErrorActionPreference = 'Stop'
-$ProgressPreference    = 'SilentlyContinue'  # avoid Invoke-WebRequest progress bar slowness
+# Suppress Invoke-WebRequest's per-byte progress bar so it doesn't fight with
+# our Write-Progress reporting.
+$ProgressPreference    = 'Continue'
+# pwsh 7+ — use the compact one-line ANSI progress view; PS 5.1 falls through.
+try { $PSStyle.Progress.View = 'Minimal' } catch { }
 
 $Cdn = 'https://cdn.steamstatic.com'
 
@@ -98,7 +102,11 @@ function Download-File {
     param([string]$Url, [string]$DestPath)
     if (Test-Path $DestPath) { return $true }
     try {
+        # silence Invoke-WebRequest's own progress so our Write-Progress is clean
+        $prev = $ProgressPreference
+        $ProgressPreference = 'SilentlyContinue'
         Invoke-WebRequest -Uri $Url -OutFile $DestPath -UseBasicParsing -TimeoutSec 120
+        $ProgressPreference = $prev
         return $true
     } catch {
         return $false
@@ -108,16 +116,27 @@ function Download-File {
 function Download-Many {
     param(
         [string]$Label,
-        [System.Collections.IEnumerable]$Pairs   # objects with .Url and .Dest
+        [System.Collections.IEnumerable]$Pairs,   # objects with .Url and .Dest
+        [int]$Id = 2
     )
     $ok = 0; $skip = 0; $fail = 0; $i = 0; $n = @($Pairs).Count
+    if ($n -eq 0) {
+        Write-Host ("  {0}: nothing to do" -f $Label) -ForegroundColor DarkGray
+        return
+    }
     foreach ($p in $Pairs) {
         $i++
-        if (Test-Path $p.Dest) { $skip++; continue }
-        if (Download-File $p.Url $p.Dest) { $ok++ } else { $fail++ }
-        if ($i % 50 -eq 0) { Write-Host ("  {0}: {1}/{2}" -f $Label, $i, $n) }
+        if (Test-Path $p.Dest) { $skip++ }
+        elseif (Download-File $p.Url $p.Dest) { $ok++ } else { $fail++ }
+        if ($i -eq $n -or ($i % 5 -eq 0)) {
+            $pct = [int](($i / $n) * 100)
+            Write-Progress -Id $Id -Activity $Label `
+                -Status ("{0,5}/{1,-5}  ok={2} skip={3} fail={4}" -f $i, $n, $ok, $skip, $fail) `
+                -PercentComplete $pct
+        }
     }
-    Write-Host ("  {0}: downloaded={1} skipped={2} failed={3}" -f $Label, $ok, $skip, $fail)
+    Write-Progress -Id $Id -Activity $Label -Completed
+    Write-Host ("  {0}: downloaded={1} skipped={2} failed={3}" -f $Label, $ok, $skip, $fail) -ForegroundColor Green
 }
 
 # 1. Heroes ------------------------------------------------------------------
@@ -353,21 +372,33 @@ if (-not $SkipData) {
         'hero_abilities','aghs_desc','neutral_abilities','hero_lore',
         'patchnotes','patch','skillshots','ability_ids','item_ids'
     )
-    foreach ($name in $openDota) {
-        $url  = "https://api.opendota.com/api/constants/$name"
-        $dest = Join-Path $DataDir "opendota_$name.json"
-        if (Save-JsonRaw $url $dest) { Write-Host "  ok  opendota/$name" } else { Write-Host "  err opendota/$name" }
-    }
-
     # Note: leaguelist/cosmeticlist/neutralitemtimedrops respond with empty body
     # unless called from an authenticated dota2.com session, so they're left out.
     $datafeed = @('herolist','abilitylist','itemlist','patchnoteslist')
+
+    $totalData = $openDota.Count + $datafeed.Count
+    $okCount = 0; $failCount = 0; $i = 0
+    foreach ($name in $openDota) {
+        $i++
+        Write-Progress -Id 4 -Activity 'JSON metadata' `
+            -Status ("opendota/{0}" -f $name) `
+            -PercentComplete ([int](($i / $totalData) * 100))
+        $url  = "https://api.opendota.com/api/constants/$name"
+        $dest = Join-Path $DataDir "opendota_$name.json"
+        if (Save-JsonRaw $url $dest) { $okCount++ } else { $failCount++ }
+    }
     foreach ($name in $datafeed) {
+        $i++
+        Write-Progress -Id 4 -Activity 'JSON metadata' `
+            -Status ("datafeed/{0}" -f $name) `
+            -PercentComplete ([int](($i / $totalData) * 100))
         $url  = "https://www.dota2.com/datafeed/$name`?language=$Language"
         $dest = Join-Path $DataDir "valve_$name.json"
-        if (Save-JsonRaw $url $dest) { Write-Host "  ok  datafeed/$name" } else { Write-Host "  err datafeed/$name" }
+        if (Save-JsonRaw $url $dest) { $okCount++ } else { $failCount++ }
     }
+    Write-Progress -Id 4 -Activity 'JSON metadata' -Completed
+    Write-Host ("  data: ok={0} fail={1}" -f $okCount, $failCount) -ForegroundColor Green
 }
 
 Write-Host ''
-Write-Host ("Done. Root: {0}" -f $OutputRoot)
+Write-Host ("Done. Root: {0}" -f $OutputRoot) -ForegroundColor Green
