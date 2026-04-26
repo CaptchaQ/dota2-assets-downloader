@@ -42,7 +42,11 @@ param(
     [switch]$SkipHeroStatIcons,    # 9 PNGs at /heroes/stats/
     [switch]$SkipHeroWideBanners,  # 127 wide banner PNGs at /heroes/wide/
     [switch]$SkipExtraUnits,       # 12 sub-unit / lane creep PNGs at /units/
-    [switch]$IncludeTeamsHires     # extra ~70 KB/team variant at /apps/dota2/teamlogos/
+    [switch]$IncludeTeamsHires,    # extra ~70 KB/team variant at /apps/dota2/teamlogos/
+
+    # Wiki maps (Fandom Dota 2 Wiki, MediaWiki API) — main minimaps per patch
+    # version + seasonal variants (~38 files). Latest exposed there is 7.33.
+    [switch]$SkipWikiMaps
 )
 
 if ($SkipLegacy) {
@@ -79,6 +83,7 @@ $ExtraUnitsDir   = Join-Path $OutputRoot 'units'
 $FacetDir        = Join-Path $OutputRoot 'facets'
 $TeamDir         = Join-Path $OutputRoot 'teams'
 $TeamHiresDir    = Join-Path $OutputRoot 'teams_hires'
+$WikiMapsDir     = Join-Path $OutputRoot 'wiki_maps'
 $DataDir         = Join-Path $OutputRoot 'data'
 
 $dirs = @($OutputRoot, $HeroDir, $HeroIconDir, $AbiItemDir, $NeutDir, $DataDir)
@@ -94,6 +99,7 @@ if (-not $SkipFacets)      { $dirs += $FacetDir }
 if (-not $SkipExtraUnits)  { $dirs += $ExtraUnitsDir }
 if ($IncludeTeams)         { $dirs += $TeamDir }
 if ($IncludeTeamsHires)    { $dirs += $TeamHiresDir }
+if (-not $SkipWikiMaps)    { $dirs += $WikiMapsDir }
 foreach ($d in $dirs) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
 
 # Helpers --------------------------------------------------------------------
@@ -508,6 +514,67 @@ if (-not $SkipData) {
     }
     Write-Progress -Id 4 -Activity 'JSON metadata' -Completed
     Write-Host ("  data: ok={0} fail={1}" -f $okCount, $failCount) -ForegroundColor Green
+}
+
+# 8. Wiki maps & minimaps ----------------------------------------------------
+# Source: Fandom Dota 2 Wiki (dota2.fandom.com) MediaWiki API. Pulls main
+# minimaps per patch version + seasonal variants. Excludes Aghanim's
+# Labyrinth (60+ rooms), concept-art, and editor screenshots. Uses
+# ?format=original to bypass Fandom's automatic webp conversion and get
+# the original PNG/JPG/GIF/WEBM payload back.
+if (-not $SkipWikiMaps) {
+    Write-Host 'Wiki maps: fetching minimap list from dota2.fandom.com (MediaWiki API)...'
+
+    $userAgent = 'dota2-assets-downloader (https://github.com/CaptchaQ/dota2-assets-downloader)'
+    $apiBase   = 'https://dota2.fandom.com/api.php'
+    $exclude   = @(
+        'Aghanim','grapheditor','camera_props','stitching','Concept_Art',
+        'Effects_Splash','to_Invoker','hierarchy','Tutorial_Map_2'
+    )
+    $allowedExt = '.png','.jpg','.jpeg','.gif','.webm'
+
+    $items = New-Object System.Collections.Generic.List[Object]
+    foreach ($prefix in 'Minimap','Map') {
+        $cont = $null
+        do {
+            $url = "$apiBase`?action=query&format=json&list=allimages&aiprefix=$prefix&ailimit=500"
+            if ($cont) { $url += "&aicontinue=$cont" }
+            try {
+                $resp = Invoke-WebRequest -Uri $url -UseBasicParsing `
+                    -Headers @{ 'User-Agent' = $userAgent } -TimeoutSec 60
+                $j = $resp.Content | ConvertFrom-Json
+            } catch {
+                Write-Host "  could not query Fandom API for prefix=$prefix" -ForegroundColor Yellow
+                break
+            }
+            foreach ($img in $j.query.allimages) {
+                $name = $img.name
+                if ($name -notmatch '^(Minimap|Map)') { continue }
+                $skip = $false
+                foreach ($x in $exclude) { if ($name -like "*$x*") { $skip = $true; break } }
+                if ($skip) { continue }
+                $ext  = [System.IO.Path]::GetExtension($name).ToLower()
+                if ($allowedExt -notcontains $ext) { continue }
+                $sep = if ($img.url.Contains('?')) { '&' } else { '?' }
+                $items.Add([pscustomobject]@{
+                    Url  = ('{0}{1}format=original' -f $img.url, $sep)
+                    Dest = (Join-Path $WikiMapsDir $name)
+                })
+            }
+            if ($j.continue -and $j.continue.aicontinue) {
+                $cont = [System.Uri]::EscapeDataString($j.continue.aicontinue)
+            } else {
+                $cont = $null
+            }
+        } while ($cont)
+    }
+
+    if ($items.Count -gt 0) {
+        Write-Host ("  found {0} files; downloading..." -f $items.Count)
+        Download-Many -Label 'wiki-maps' -Pairs $items
+    } else {
+        Write-Host '  no wiki maps returned (API blocked or empty)' -ForegroundColor Yellow
+    }
 }
 
 Write-Host ''

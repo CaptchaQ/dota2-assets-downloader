@@ -237,6 +237,15 @@ $Categories = @(
         SizeMb   = 6
         SizeText = '~6 MB'
         Default  = $true
+    },
+    [pscustomobject]@{
+        Key      = 'WikiMaps'
+        NameEn   = 'Wiki maps & minimaps (Fandom Dota 2 Wiki, by patch + seasonal)'
+        NameRu   = 'Wiki карты/минимапы (Fandom Dota 2 Wiki, по патчам + сезонные)'
+        Count    = '~38'
+        SizeMb   = 26
+        SizeText = '~26 MB'
+        Default  = $true
     }
 )
 
@@ -392,6 +401,7 @@ function Build-Args {
     if (-not $byKey.HeroesWide)      { $argsList += '-SkipHeroWideBanners' }
     if (-not $byKey.HeroStats)       { $argsList += '-SkipHeroStatIcons' }
     if (-not $byKey.ExtraUnits)      { $argsList += '-SkipExtraUnits' }
+    if (-not $byKey.WikiMaps)        { $argsList += '-SkipWikiMaps' }
 
     if ($byKey.HeroesVideos)         { $argsList += '-IncludeVideos' }
     if ($byKey.Teams)                { $argsList += '-IncludeTeams' }

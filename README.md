@@ -31,6 +31,7 @@ By default the script saves everything in the table below, except hero render vi
 | Pro-team logos hi-res *(opt-in)* | `dota_official_assets/teams_hires/` | OpenDota `/api/teams` → CDN `apps/dota2/teamlogos/` | thousands | ~200 MB |
 | OpenDota constants JSON | `dota_official_assets/data/opendota_*.json` | `https://api.opendota.com/api/constants/...` | 12 files | ~5 MB |
 | Valve datafeed JSON | `dota_official_assets/data/valve_*.json` | `https://www.dota2.com/datafeed/...` | 4 files | ~1 MB |
+| Wiki maps & minimaps | `dota_official_assets/wiki_maps/Minimap_*.png/jpg/gif/webm` | Fandom Dota 2 Wiki MediaWiki API → `static.wikia.nocookie.net` (`?format=original`) | ~38 | ~26 MB |
 
 > Counts and sizes change with every Dota 2 patch.
 
