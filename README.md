@@ -39,7 +39,16 @@ By default the script saves everything in the table below, except hero render vi
 - **Windows / Linux / macOS** (anywhere PowerShell runs)
 - **PowerShell 5.1+** or **PowerShell 7+**
 
-### Run — interactive TUI (recommended)
+### Run — double-click on Windows (easiest)
+
+1. Download / clone the repo (or grab a ZIP from GitHub → **Code** → **Download ZIP**) and extract it anywhere.
+2. Double-click **`Start-DotaAssetsDownloader.cmd`**.
+
+That's it — the `.cmd` switches the console to UTF-8, bypasses the execution policy and starts the TUI in the same window. After the download finishes the window stays open with `Press any key to continue...` so you can read the summary.
+
+The `.cmd` automatically picks PowerShell 7 (`pwsh.exe`) if it's on `PATH`, otherwise falls back to the built-in Windows PowerShell 5.1 (`powershell.exe`).
+
+### Run — interactive TUI (any OS)
 
 ```powershell
 .\Start-DotaAssetsDownloader.ps1
@@ -53,7 +62,7 @@ The launcher walks you through:
 
 **Controls:** `↑`/`↓` — move, `Space` — toggle current row, `A` — toggle all, `D` — reset to defaults, `Enter` — start, `Q` / `Esc` — quit.
 
-If you get an execution-policy error on Windows:
+If you get an execution-policy error on Windows when running the `.ps1` directly:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File ".\Start-DotaAssetsDownloader.ps1"
